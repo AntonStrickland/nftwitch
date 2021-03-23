@@ -12,16 +12,20 @@ const customError = (data) => {
 // Extra parameters can be stated in the extra object,
 // with a Boolean value indicating whether or not they
 // should be required.
+
 const customParams = {
-  login: ['login'],
-  endpoint: false
+  action: ['action'],
+  sender: false,
+  login: false,
+  to_id: false,
 }
 
 const createRequest = (input, callback) => {
   // The Validator helps you validate the Chainlink request data
   const validator = new Validator(callback, input, customParams)
   const jobRunID = validator.validated.id
-  const endpoint = validator.validated.data.endpoint || 'users'
+
+  const action = validator.validated.data.action;
 
   var getTokenConfig = {
     url: 'https://id.twitch.tv/oauth2/token',
@@ -36,61 +40,102 @@ const createRequest = (input, callback) => {
   var accessToken = 'failed to get token';
   const td = axios.request(getTokenConfig)
   .then((response) => {
-    console.log(response.data);
+
     accessToken = response.data.access_token
-    console.log(accessToken);
 
+    if (action == "register")
+    {
+      const url = "https://api.twitch.tv/helix/users"
 
-    // TODO: Add followers endpoint here
-    const url = `https://api.twitch.tv/helix/${endpoint}`
-    //const id = validator.validated.data.id
-    const login = validator.validated.data.login
-    //const description = validator.validated.data.description
+      const login = validator.validated.data.login || "login"
+      const addr = "0x" + (validator.validated.data.sender || "0x12345")
 
-    const params = {
-      login
-    }
-
-    // This is where you would add method and headers
-    // you can add method like GET or POST and add it to the config
-    // The default is GET requests
-    // method = 'get'
-    // headers = 'headers.....'
-    const config = {
-      url,
-      params,
-      method: "GET",
-      headers: {
-        "Client-ID": process.env.TWITCH_API_KEY,
-        'Authorization': 'Bearer ' + accessToken
+      const params = {
+        login
       }
+
+      const config = {
+        url,
+        params,
+        method: "GET",
+        headers: {
+          "Client-ID": process.env.TWITCH_API_KEY,
+          'Authorization': 'Bearer ' + accessToken
+        }
+      }
+
+      Requester.request(config, customError)
+        .then(response => {
+
+          // A quick fix around the Twitch api's data container
+          var fixed = JSON.stringify(response.data);
+          fixed = fixed.replace('[', '');
+          fixed = fixed.replace(']', '');
+          response.data = JSON.parse(fixed);
+
+          var id = response.data.data.id;
+          const desc = response.data.data.description.toLowerCase();
+
+          console.log("---");
+          console.log(desc);
+          console.log(addr);
+          console.log("---");
+          // We verify that the sender actually owns the Twitch account
+          // by checking if their description matches the sender's wallet.
+          // If the streamer's description is not the sender's address,
+          // don't allow them to register. Verified streamers only.
+          if (desc != addr)
+          {
+            console.log("Description does not match address!");
+            id = 0;
+          }
+
+          response.data.result = id;
+          response.status = 200;
+          callback(response.status, Requester.success(jobRunID, response));
+        })
+        .catch(error => {
+          callback(500, Requester.errored(jobRunID, error))
+        })
     }
+    else if (action == "follows")
+    {
 
-    // The Requester allows API calls be retry in case of timeout
-    // or connection failure
-    Requester.request(config, customError)
-      .then(response => {
-        // It's common practice to store the desired value at the top-level
-        // result key. This allows different adapters to be compatible with
-        // one another.
+      // Perform another request to get current follower count
+      const to_id = validator.validated.data.to_id || "0"
 
-        var fixed = JSON.stringify(response.data);
+      const url = "https://api.twitch.tv/helix/users/follows"
+      const params = {
+        to_id
+      }
 
-        fixed = fixed.replace('[', '');
-        fixed = fixed.replace(']', '');
+      const config = {
+        url,
+        params,
+        method: "GET",
+        headers: {
+          "Client-ID": process.env.TWITCH_API_KEY,
+          'Authorization': 'Bearer ' + accessToken
+        }
+      }
 
-        response.data = JSON.parse(fixed);
+      Requester.request(config, customError)
+        .then(response => {
 
-        //console.log(response.data.data.view_count);
-        //console.log(response.data.data.id);
+          response.data.result = Requester.validateResultNumber(response.data, ['total']);
+          response.status = 200;
+          callback(response.status, Requester.success(jobRunID, response));
 
-        response.data.result = Requester.validateResultNumber(response.data, ['data', 'id']);
-        response.status = 200;
+        }).catch(error => {
+          callback(500, Requester.errored(jobRunID, error))
+        });
+
+      }
+      else {
         callback(response.status, Requester.success(jobRunID, response));
-      })
-      .catch(error => {
-        callback(500, Requester.errored(jobRunID, error))
-      })
+        //callback(500, Requester.errored(jobRunID, "Invalid action"));
+      }
+
 
 
   })
