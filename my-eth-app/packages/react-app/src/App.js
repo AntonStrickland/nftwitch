@@ -28,20 +28,26 @@ const darkTheme = createMuiTheme({
   },
 });
 
-async function pairWallet(provider, username) {
+async function getFollowerCountFromUsername(provider, username) {
   const signer = provider.getSigner();
   console.log(username);
-  const contract = new Contract("0x9b2b4735Ac8a110b8Bd976C029091d0d2e4D3EC2", abis.test, signer);
+  const contract = new Contract("0x9433EAA29767B99313A88553b74477D3F7a34eF5", abis.test, signer);
   console.log(contract);
-  const requestUserID = await contract.requestUserID(
+  const demo = await contract.demo(
     "0xB88369eccCfdaDdC2244CE8eE1073AE876faf64C",
     "9fbe4eed450345fd8218dcc77b585957",
     username
   );
-  console.log(requestUserID);
-  const userID = await contract.currentID();
-  console.log(userID);
-  alert(userID);
+
+  contract.on('DemoFulfilled', function(){displayFollowerCount(contract)});
+}
+
+async function displayFollowerCount(contract)
+{
+  console.log('Demo fulfilled!');
+  const followerCount = await contract.followerCount();
+  console.log(followerCount);
+  alert(followerCount);
 }
 
 async function readOnChainData(provider, address) {
@@ -105,8 +111,8 @@ function RenderPage(props) {
       <form className={classes.root} noValidate autoComplete="off">
         <TextField onChange={handleInput} id="nameField" label="Enter your Twitch username" />
       </form>
-      <Button onClick={() => pairWallet(props.provider, name)}>
-        Pair wallet with account</Button>
+      <Button onClick={() => getFollowerCountFromUsername(props.provider, name)}>
+        Get follower count</Button>
     </div>
   );
 }

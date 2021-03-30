@@ -1,0 +1,19 @@
+{
+  "name": "test",
+  "description": "This is the description.",
+  "image": "https://ipfs.io/ipfs/QmPJXh331N4PutcCmA94xWkxPhXSJm8vgogvpAEbuiHX5y?filename=sadcroc.png",
+  "attributes": [
+    {
+      "trait_type": "Strength",
+      "value": 86
+    },
+    {
+      "trait_type": "Speed",
+      "value": 54
+    },
+    {
+      "trait_type": "Stamina",
+      "value": 1
+    }
+  ]
+}

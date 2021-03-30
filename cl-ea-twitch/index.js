@@ -131,10 +131,78 @@ const createRequest = (input, callback) => {
         });
 
       }
-      else {
-        callback(response.status, Requester.success(jobRunID, response));
-        //callback(500, Requester.errored(jobRunID, "Invalid action"));
+
+    else if (action == "demo")
+    {
+      var url = "https://api.twitch.tv/helix/users";
+
+      const login = validator.validated.data.login || "login"
+
+      var params = {
+        login
       }
+
+      var config = {
+        url,
+        params,
+        method: "GET",
+        headers: {
+          "Client-ID": process.env.TWITCH_API_KEY,
+          'Authorization': 'Bearer ' + accessToken
+        }
+      }
+
+      Requester.request(config, customError)
+        .then(response => {
+
+          // A quick fix around the Twitch api's data container
+          var fixed = JSON.stringify(response.data);
+          fixed = fixed.replace('[', '');
+          fixed = fixed.replace(']', '');
+          response.data = JSON.parse(fixed);
+
+          const to_id = String(response.data.data.id);
+          //console.log(to_id);
+
+          // Perform another request to get current follower count
+          url = "https://api.twitch.tv/helix/users/follows";
+          params = {
+            to_id
+          }
+
+          //console.log(url);
+
+          config = {
+            url,
+            params,
+            method: "GET",
+            headers: {
+              "Client-ID": process.env.TWITCH_API_KEY,
+              'Authorization': 'Bearer ' + accessToken
+            }
+          }
+
+          Requester.request(config, customError)
+            .then(response => {
+
+              response.data.result = Requester.validateResultNumber(response.data, ['total']);
+              response.status = 200;
+              callback(response.status, Requester.success(jobRunID, response));
+
+            }).catch(error => {
+              callback(500, Requester.errored(jobRunID, error))
+            });
+
+        })
+        .catch(error => {
+          callback(500, Requester.errored(jobRunID, error))
+        })
+    }
+    else
+    {
+      callback(response.status, Requester.success(jobRunID, response));
+      //callback(500, Requester.errored(jobRunID, "Invalid action"));
+    }
 
 
 
