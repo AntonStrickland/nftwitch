@@ -43,12 +43,11 @@ const createRequest = (input, callback) => {
 
     accessToken = response.data.access_token
 
-    if (action == "register")
+    if (action == "verify")
     {
       const url = "https://api.twitch.tv/helix/users"
 
       const login = validator.validated.data.login || "login"
-      const addr = "0x" + (validator.validated.data.sender || "0x12345")
 
       const params = {
         login
@@ -73,24 +72,44 @@ const createRequest = (input, callback) => {
           fixed = fixed.replace(']', '');
           response.data = JSON.parse(fixed);
 
-          var id = response.data.data.id;
-          const desc = response.data.data.description.toLowerCase();
+          response.data.result = response.data.data.description.toLowerCase();
+          response.status = 200;
+          callback(response.status, Requester.success(jobRunID, response));
+        })
+        .catch(error => {
+          callback(500, Requester.errored(jobRunID, error))
+        })
+    }
+    else if (action == "register")
+    {
+      const url = "https://api.twitch.tv/helix/users"
 
-          console.log("---");
-          console.log(desc);
-          console.log(addr);
-          console.log("---");
-          // We verify that the sender actually owns the Twitch account
-          // by checking if their description matches the sender's wallet.
-          // If the streamer's description is not the sender's address,
-          // don't allow them to register. Verified streamers only.
-          if (desc != addr)
-          {
-            console.log("Description does not match address!");
-            id = 0;
-          }
+      const login = validator.validated.data.login || "login"
 
-          response.data.result = id;
+      const params = {
+        login
+      }
+
+      const config = {
+        url,
+        params,
+        method: "GET",
+        headers: {
+          "Client-ID": process.env.TWITCH_API_KEY,
+          'Authorization': 'Bearer ' + accessToken
+        }
+      }
+
+      Requester.request(config, customError)
+        .then(response => {
+
+          // A quick fix around the Twitch api's data container
+          var fixed = JSON.stringify(response.data);
+          fixed = fixed.replace('[', '');
+          fixed = fixed.replace(']', '');
+          response.data = JSON.parse(fixed);
+
+          response.data.result = response.data.data.id;
           response.status = 200;
           callback(response.status, Requester.success(jobRunID, response));
         })
