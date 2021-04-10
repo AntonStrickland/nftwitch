@@ -6,13 +6,6 @@ import "../../../openzeppelin/contracts/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.6/ChainlinkClient.sol";
 import "@chainlink/contracts/src/v0.6/vendor/Ownable.sol";
 
-/*
- * Network: Rinkeby
- * Chainlink VRF Coordinator address: 0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B
- * LINK token address:                0x01BE23585060835E02B77ef475b0Cc51aA1e0709
- * Key Hash: 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311
- */
-
 contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
 
   using SafeMath for uint256;
@@ -22,27 +15,32 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   // NOTE: We must store the id instead of the username because
   // if they change their username then nothing will be returned,
   // but the id will remain consistent across changed names.
-  mapping(uint256 => address) public wallets;
-  mapping(address => uint256) public ids;
+  mapping(uint256 => address) internal wallets;
+  mapping(address => uint256) internal ids;
 
-  mapping(string => address) public loginToAddressVerified; // prepared for registration
+  mapping(string => address) internal loginToAddressVerified; // prepared for registration
 
   struct StreamerData
   {
     uint256 level; // current level
-    uint256 followCount; // last updated follower count
+    uint256 followCount; // required count for the current level
     uint256 requiredFollowCount; // required count for next level
     uint256 prevFollowCount; // required count for the current level
     uint256 allowedMints; // number of NFTs currently allowed to mint
+
+    // Keep track of the allowed mints per level
+    uint256 lastMintedLevel;
+    uint256 nftsMintedThisLevel;
   }
 
-  mapping(uint256 => StreamerData) public data;
+  uint256[100] internal levelsToFollowers;
+
+  mapping(uint256 => StreamerData) internal data;
 
   struct NFT
   {
-      uint256 level;
-      uint256 view_count;
-      uint256 broadcaster_type; // 1 = normal, 2 = affiliate, 3 = partner, etc.
+      uint256 twitchId;
+      uint256 followCount;
   }
 
   // Array of all NFTs across all streamers
@@ -50,7 +48,7 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
 
   // Array of indices pointing to NFTs in the main array
   // owned by each individual streamer (based on ID)
-  mapping(uint256 => uint256[]) public tokenIndices;
+  mapping(uint256 => uint256[]) internal tokenIndices;
 
   event VerifyStreamer(
     bytes32 indexed requestId,
@@ -72,18 +70,38 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   event MintFulfilled(
     address indexed addr,
     uint256 indexed nextId,
-    bool indexed success,
+    uint256 numberMinted,
     uint256 allowed
   );
 
-  bytes32 public testDesc;
-  bytes32 public testAddr;
+  mapping(bytes32 => address) internal reqToAddress;
+  mapping(bytes32 => string) internal reqToLogin;
 
-  mapping(bytes32 => address) public reqToAddress;
-  mapping(bytes32 => string) public reqToLogin;
-
-  constructor() public ERC721("NFTwitch", "NFTW") {
+  constructor() public ERC721("NFTwitch", "NFTW")
+  {
     setPublicChainlinkToken();
+
+    uint256 level = 1;
+    uint256 requiredFollowCount = 10;
+    uint256 prevFollowCount = 0;
+
+    uint256 diff = 0;
+
+    while (level < 100)
+    {
+      diff = requiredFollowCount - prevFollowCount;
+    	prevFollowCount = requiredFollowCount;
+
+      // Increase the number of new NFTs available to be minted
+      levelsToFollowers[level] = requiredFollowCount;
+
+    	// Exponentially increase the required follow count for next level and check for overflow
+    	requiredFollowCount = ((requiredFollowCount * 10) + (diff * 12))/10;
+
+    	// Increment the level and check for overflow
+    	level += 1;
+    }
+
   }
 
   // This function is called to verify the streamer prior to registration.
@@ -110,9 +128,6 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   {
     // Get address as bytes32 for comparison
     bytes32 addr = bytes32(uint256(reqToAddress[_requestId]));
-
-    testDesc = _desc;
-    testAddr = addr;
 
     // If the user's description contains the sender's address,
     // then they are successfully verified.
@@ -158,7 +173,6 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   function fulfillRegistration(bytes32 _requestId, uint256 _id)
     external recordChainlinkFulfillment(_requestId)
   {
-    emit RequestUserIDFulfilled(_requestId, _id);
 
     // If this id has already been mapped, unmap the old wallet value
     if (uint256(wallets[_id]) != 0)
@@ -180,7 +194,10 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     if (data[_id].level < 1)
     {
       data[_id].level = 1;
+      data[_id].lastMintedLevel = 1;
     }
+
+    emit RequestUserIDFulfilled(_requestId, _id);
 
   }
 
@@ -189,6 +206,7 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   function requestFollows(address _oracle, string memory _jobId) external
   {
     require(ids[msg.sender] > 0, "Wallet not registered.");
+    require(data[ids[msg.sender]].allowedMints == 0, "Mint your NFTs first!");
 
     Chainlink.Request memory req = buildChainlinkRequest(stringToBytes32(_jobId), address(this), this.fulfillFollows.selector);
     req.addUint("to_id", ids[msg.sender]);
@@ -213,26 +231,18 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     // Update the follower count
     data[senderID].followCount = _follows;
 
-    uint256 diff = 0;
     uint256 numberOfNewMints = 0;
 
     // For every X followers gained, allow minting of Y NFTs
-    // (Do this for every level-up)
-    while (data[senderID].followCount > data[senderID].requiredFollowCount)
+    while (data[senderID].followCount > data[senderID].requiredFollowCount
+      && data[senderID].level < 99)
     {
-      // Calculations
-      diff = data[senderID].requiredFollowCount - data[senderID].prevFollowCount;
-    	data[senderID].prevFollowCount = data[senderID].requiredFollowCount;
-
-    	// Exponentially increase the required follow count for next level and check for overflow
-    	data[senderID].requiredFollowCount = ((data[senderID].requiredFollowCount * 10) + (diff * 12))/10;
-      require(data[senderID].requiredFollowCount > data[senderID].level, "overflow");
-
-    	// Increment the level and check for overflow
-    	data[senderID].level = data[senderID].level + 1;
-
       // Increase the number of new NFTs available to be minted
-    	numberOfNewMints = numberOfNewMints + (data[senderID].level - 1);
+    	numberOfNewMints += (data[senderID].level);
+
+    	// Increment the level and required follows
+    	data[senderID].level += 1;
+      data[senderID].requiredFollowCount = levelsToFollowers[data[senderID].level];
     }
 
     // Increase the number of total NFTs this streamer can mint
@@ -243,52 +253,73 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   }
 
   // Returns the current level associated with this address
-  function getStreamerData() external view returns (uint256, uint256, uint256, uint256)
+  function getStreamerData() external view returns (uint256, uint256,
+    uint256, uint256, uint256)
   {
     uint256 senderID = ids[msg.sender];
-    return (data[senderID].level, data[senderID].followCount, data[senderID].requiredFollowCount, data[senderID].allowedMints);
+    return (data[senderID].level,
+      data[senderID].followCount,
+      data[senderID].prevFollowCount,
+      data[senderID].requiredFollowCount,
+      data[senderID].allowedMints);
   }
 
   // This function is called when the streamer is ready to mint their NFTs
-  function mint_nft() external
+  function mint_nfts(uint256 maxMints) external
   {
     // Check that this address is allowed to mint an NFT
     uint256 senderID = ids[msg.sender];
-    require(data[senderID].allowedMints > 0, "Unable to mint");
+    require(data[senderID].allowedMints > 0, "Nothing to mint");
 
-    // Calculate the variables to be stored in the NFT
+    if (maxMints > data[senderID].allowedMints)
+    {
+      maxMints = data[senderID].allowedMints;
+    }
 
-    // We need to get the nextID based on the total NFTs
-    // across all streamers, not just the streamer minting the token.
-    // So we have a massive array of NFTs spanning all streamers,
-    // and a mapping of streamers to an array of indices (which NFTs they own)
     uint256 nextId = nfts.length;
+    uint256 totalMinted = 0;
+    while(data[senderID].allowedMints > 0
+      && totalMinted < maxMints
+      && data[senderID].level > data[senderID].lastMintedLevel)
+    {
+      // We need to get the nextID based on the total NFTs
+      nextId = nfts.length;
 
-    // TODO: This is not right, as even when we get the data
-    // it will only be a reflection of when the NFT was minted,
-    // not what was actually true when the follower count increased.
-    // Possible fix: Store this data in a struct upon level-up,
-    // as a mapping of level (uint256) to the struct.
-    uint256 views = 123;
-    uint256 b_type = 1;
+      // Decrease the number of available mints
+      data[senderID].allowedMints = data[senderID].allowedMints - 1;
 
-    // Decrease the number of available mints
-    data[senderID].allowedMints = data[senderID].allowedMints - 1;
+      // Create the struct, add to list associated with streamer's ID
+      // We want the follow count of that particular milestone
+      nfts.push(NFT(senderID, levelsToFollowers[data[senderID].lastMintedLevel]));
+      tokenIndices[senderID].push(nextId);
 
-    // Create the struct, add to list associated with streamer's ID
-    nfts.push(NFT(data[senderID].level, views, b_type));
-    tokenIndices[senderID].push(nextId);
+      data[senderID].nftsMintedThisLevel += 1;
 
-    // Associates the address with the new token's id
-    _safeMint(msg.sender, nextId);
+      // If we cannot mint any more at this level, go to the next level
+      if (data[senderID].nftsMintedThisLevel >= data[senderID].lastMintedLevel)
+      {
+        data[senderID].nftsMintedThisLevel = 0;
+        data[senderID].lastMintedLevel += 1;
+      }
 
-    emit MintFulfilled(msg.sender, nextId, true, data[senderID].allowedMints);
+      // Associates the address with the new token's id
+      _safeMint(msg.sender, nextId);
+      totalMinted = totalMinted + 1;
+    }
+
+    emit MintFulfilled(msg.sender, nextId, totalMinted, data[senderID].allowedMints);
   }
 
   // Is the sender registered with the contract?
   function isRegistered() external view returns (bool)
   {
     return (ids[msg.sender] > 0);
+  }
+
+  // Is the sender registered with the contract?
+  function getIdFromWallet() external view returns (uint256)
+  {
+    return ids[msg.sender];
   }
 
   // Get the token indices of all NFTs minted by the login
@@ -300,7 +331,16 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
   // Get the data of an NFT given the token ID
   function getTokenData(uint256 tokenId) external view returns (uint256, uint256, uint256)
   {
-    return(nfts[tokenId].level, nfts[tokenId].view_count, nfts[tokenId].broadcaster_type);
+    return(nfts[tokenId].twitchId, nfts[tokenId].followCount, 0);
+  }
+
+  function getTokenURI(uint256 tokenId) public view returns (string memory) {
+      return tokenURI(tokenId);
+  }
+
+  function setTokenURI(uint256 tokenId, string memory _tokenURI) external {
+      require(nfts[tokenId].twitchId == ids[msg.sender], "Not yours");
+      _setTokenURI(tokenId, _tokenURI);
   }
 
   function withdrawLink() public onlyOwner {

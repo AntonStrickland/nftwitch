@@ -109,10 +109,10 @@
 				"type": "uint256"
 			},
 			{
-				"indexed": true,
-				"internalType": "bool",
-				"name": "success",
-				"type": "bool"
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "numberMinted",
+				"type": "uint256"
 			},
 			{
 				"indexed": false,
@@ -293,46 +293,6 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "data",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "level",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "followCount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "requiredFollowCount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "prevFollowCount",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "allowedMints",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
 				"name": "tokenId",
 				"type": "uint256"
 			}
@@ -343,26 +303,6 @@
 				"internalType": "address",
 				"name": "",
 				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"name": "ids",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -402,26 +342,6 @@
 				"internalType": "bool",
 				"name": "",
 				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"name": "loginToAddressVerified",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -470,46 +390,6 @@
 				"internalType": "address",
 				"name": "",
 				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"name": "reqToAddress",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"name": "reqToLogin",
-		"outputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
 			}
 		],
 		"stateMutability": "view",
@@ -620,34 +500,6 @@
 		"constant": true
 	},
 	{
-		"inputs": [],
-		"name": "testAddr",
-		"outputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [],
-		"name": "testDesc",
-		"outputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -656,31 +508,6 @@
 			}
 		],
 		"name": "tokenByIndex",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "tokenIndices",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -786,26 +613,6 @@
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "wallets",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
 	},
 	{
 		"inputs": [
@@ -948,6 +755,11 @@
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -955,8 +767,14 @@
 		"constant": true
 	},
 	{
-		"inputs": [],
-		"name": "mint_nft",
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "maxMints",
+				"type": "uint256"
+			}
+		],
+		"name": "mint_nfts",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -969,6 +787,20 @@
 				"internalType": "bool",
 				"name": "",
 				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function",
+		"constant": true
+	},
+	{
+		"inputs": [],
+		"name": "getIdFromWallet",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",
@@ -1018,6 +850,44 @@
 		"stateMutability": "view",
 		"type": "function",
 		"constant": true
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "getTokenURI",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function",
+		"constant": true
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_tokenURI",
+				"type": "string"
+			}
+		],
+		"name": "setTokenURI",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
 	},
 	{
 		"inputs": [],

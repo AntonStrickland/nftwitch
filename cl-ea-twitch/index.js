@@ -43,7 +43,7 @@ const createRequest = (input, callback) => {
 
     accessToken = response.data.access_token
 
-    if (action == "verify")
+    if (action == "verify" || action == "name" || action == "pic")
     {
       const url = "https://api.twitch.tv/helix/users"
 
@@ -72,7 +72,19 @@ const createRequest = (input, callback) => {
           fixed = fixed.replace(']', '');
           response.data = JSON.parse(fixed);
 
-          response.data.result = response.data.data.description.toLowerCase();
+          if (action == "verify")
+          {
+            response.data.result = response.data.data.description.toLowerCase();
+          }
+          else if (action == "name")
+          {
+            response.data.result = response.data.data.login;
+          }
+          else if (action == "pic")
+          {
+            response.data.result = response.data.data.profile_image_url;
+          }
+
           response.status = 200;
           callback(response.status, Requester.success(jobRunID, response));
         })

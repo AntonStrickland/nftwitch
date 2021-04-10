@@ -28,6 +28,7 @@ module.exports = {
         return new HDWalletProvider(mnemonic, url)
       },
       network_id: '4',
+      gas: 10000000,
       skipDryRun: true
     },
   },

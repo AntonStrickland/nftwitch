@@ -1,24 +1,35 @@
 import styled from "styled-components";
 
 export const Header = styled.header`
-  background-color: #282c34;
+  background-color: #271244;
   min-height: 70px;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
   color: white;
+  font-size: calc(12px + 2vmin);
 `;
 
 export const Body = styled.body`
   align-items: center;
-  background-color: #282c34;
+  background-color: rgb(78,37,137);
   color: white;
   display: flex;
-  flex-direction: column;
-  font-size: calc(10px + 2vmin);
+  font-size: calc(8px + 2vmin);
   justify-content: center;
   min-height: calc(100vh - 70px);
+`;
+
+export const Footer = styled.footer`
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #271244;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  font-size: calc(12px + 2vmin);
 `;
 
 export const Image = styled.img`
@@ -41,7 +52,7 @@ export const Button = styled.button`
   border-radius: 8px;
   color: #282c34;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 20px;
   text-align: center;
   text-decoration: none;
   margin: 0px 20px;
