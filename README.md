@@ -1,9 +1,9 @@
 # nftwitch
 Earn dynamic NFTs as you grow your Twitch channel, for Chainlink Hackathon 2021
 
-WIP Demo (use Rinkeby testnet): https://nftwitch.link/ 
+Live Demo (use Rinkeby testnet): https://nftwitch.link/ 
 
-The current demo has a button that takes in a Twitch username as input and returns an alert indicating the number of followers that the user currently has on Twitch. This is to just showcase that the functionality of interacting with the Twitch API via Chainlink is correctly working. It makes use of a custom-built external adapter that is on a node that I am running for the sake of this project. The project's full scope is outlined below.
+[Watch the demo video here](https://www.youtube.com/watch?v=JD89t2GYlRM)
 
 # Project Structure
 This project is composed of three parts:
@@ -21,6 +21,3 @@ By interacting with smart contracts and Chainlink oracles, Twitch streamers can 
 
 # How it works
 Streamers register with a smart contract via the front-end, using Chainlink's API to verify ownership of their Twitch account. Streamers can periodically return to the site and mint a number of NFTs when a new follower threshold is reached (verified by Chainlink). Additionally, these NFTs make use of Chainlink's VRF to have some randomized information that may be valuable to different fans and encourage trading or ownership. Upon minting, the NFTs are allocated to the streamer and can then be redistributed and/or sold to fans.
-
-# To-Do
-So far I've spent most of my time creating the external adapter to get data from Twitch into the smart contracts. What's left is just using the smart contracts to create the dynamic NFTs, which I've gotten working to some extent (not in this demo though). Also I could definitely spend some time to make a nice front-end, but I'm saving that part for last. If I have extra time, I want to make use of IPFS to store the NFT data, too.
