@@ -69,75 +69,7 @@ function RenderPage(props) {
  const [gotTwitchInfo, setGotTwitchInfo] = useState(false);
 
   const [username, setUsername] = useState("");
-  const [profileURL, setProfileURL] = useState("");
-
-  const getOffchainTwitchInfo = async (provider, caddr) => {
-
-    if (gotTwitchInfo) return;
-    setGotTwitchInfo(true);
-
-    const signer = provider.getSigner();
-    const contract = new Contract(caddr, abis.test, signer);
-    const id = parseInt(await contract.getIdFromWallet()).toString();
-
-    if (id)
-    {
-
-      var getTokenConfig = {
-          url: 'https://id.twitch.tv/oauth2/token',
-          method: 'POST',
-          params: {
-            client_id: process.env.REACT_APP_TWITCH_KEY,
-            client_secret: process.env.REACT_APP_TWITCH_SECRET,
-            grant_type: 'client_credentials'
-          }
-        }
-
-      var accessToken = 'failed to get token';
-      const td = axios.request(getTokenConfig)
-      .then((response) => {
-
-        accessToken = response.data.access_token
-
-        const url = "https://api.twitch.tv/helix/users"
-
-        const params = {
-          id
-        }
-
-        const config = {
-          url,
-          params,
-          method: "GET",
-          headers: {
-            "Client-ID": process.env.REACT_APP_TWITCH_KEY,
-            'Authorization': 'Bearer ' + accessToken
-          }
-        }
-
-
-        axios.request(config).then(response => {
-
-            // A quick fix around the Twitch api's data container
-            var fixed = JSON.stringify(response.data);
-            fixed = fixed.replace('[', '');
-            fixed = fixed.replace(']', '');
-            response.data = JSON.parse(fixed);
-
-            setUsername(response.data.data.login);
-            setProfileURL(response.data.data.profile_image_url);
-
-            response.status = 200;
-          })
-
-
-      });
-
-
-    }
-
-
-  }
+  const [profileURL, setProfileURL] = useState("x");
 
   const constructor = async (provider, caddr) => {
 
@@ -186,24 +118,34 @@ function RenderPage(props) {
   const signer = provider.getSigner();
   const contract = new Contract(caddr, abis.test, signer);
 
-  const [level, follow, lastFollow, reqFollow, allowed] = await contract.getStreamerData();
+  const [level, follow, lastFollow, reqFollow, allowed, uname, pic] = await contract.getStreamerData();
+
+  // We must break the URL apart in the external adapter
+  // and then put it back together here
+  // because of the 32 bytes limitation
+  const pic1 = pic.toString().substr(0, 8) + "-";
+  const pic2 = pic.toString().substr(8, 4) + "-";
+  const pic3 = pic.toString().substr(12, 4) + "-";
+  const pic4 = pic.toString().substr(16, 4) + "-";
+  const pic5 = pic.toString().substr(20, 12);
+
+  const picFinal = pic1 + pic2 + pic3 + pic4 + pic5;
+  const image = 'https://static-cdn.jtvnw.net/jtv_user_pictures/' + picFinal + '-profile_image-300x300.jpg';
 
   setLevel(level.toString());
   setFollowers(follow.toString());
   setToThisLevel(lastFollow.toString());
   setToNextLevel(reqFollow.toString());
   setAllowed(allowed.toString());
+  setUsername(uname.toString());
 
-  const uri = await contract.getTokenURI(0);
-  console.log("URI: " + uri.toString());
-
-  if (allowed > 0)
+  if (pic != "")
   {
-    setState("mint");
+      setProfileURL(image.toString());
   }
-  else {
-    setState("registered");
-  }
+
+
+  setState("registered");
 };
 
 // 2. Register this wallet (if verified) to the streamer
@@ -314,86 +256,83 @@ const withdrawLink = async (provider, caddr, username) => {
 
      console.log("Next ID: " + nextId.toString());
      console.log("Success: " + success.toString());
-
-     const signer = provider.getSigner();
-     console.log(signer);
-     const con = new Contract(caddr, abis.test, signer);
-     console.log(con);
-
-     const startToken = nextId - parseInt(numberToMint) + 1;
-     console.log("number: " + numberToMint);
-     console.log("start: " + startToken);
-
-     const endToken = parseInt(startToken) + parseInt(numberToMint);
-
-     try
-     {
-
-       // TODO: We can't just do these in order,
-       // but only within our tokenIndices!
-
-       // Also, it'd be a pain to mint tons of NFTs because
-       // we'd need to sign for them individually,
-       // so do some kind of bulk metadata creation
-
-
-       // For each NFT we just minted, update the metadata URI
-       for(var token = startToken; token < endToken; token++)
-       {
-         console.log(token);
-         console.log(endToken);
-         const jsonData = await createJsonData(token, con);
-         console.log("pin");
-         const pinnedURI = await pinJSONToIPFS(process.env.REACT_APP_PINATA_KEY,
-           process.env.REACT_APP_PINATA_SECRET, jsonData, con, token);
-       }
-
-     } catch (e) {
-       console.log(e);
-     }
-
      setState("update");
    });
  }
 
- const testPin = async (provider, caddr) => {
-   const token = 0;
+
+ const setPicture = async (provider, caddr) => {
+
    const signer = provider.getSigner();
    const contract = new Contract(caddr, abis.test, signer);
-   const jsonData = await createJsonData(token, contract);
-   const pinnedURI = await pinJSONToIPFS(process.env.REACT_APP_PINATA_KEY,
-     process.env.REACT_APP_PINATA_SECRET, jsonData, contract, token);
+   const demo = await contract.requestPicture(
+     "0xa333365f5cCd13a7ee33FaccDE25eb629cA89DdF",
+     "2d1bd9328c56495c8a0ab9c249564cd0"
+   );
 
+   setState("waiting");
+   setWaitMessage("Syncing picture...");
+
+   contract.on('PictureFulfilled', (requestId, url) => {
+     console.log(url);
+     console.log(url.toString());
+     setProfileURL(url.toString());
+
+    setState("registered");
+
+   });
  }
 
- const createJsonData = async (tokenId, contract) => {
+ const setURI = async(provider, caddr) => {
+
+   const signer = provider.getSigner();
+   const contract = new Contract(caddr, abis.test, signer);
+
+   setState("waiting");
+   setWaitMessage("Updating token URI...");
+
+   //for(var lvl = 1; lvl < 100; lvl++)
+   //{
+     const jsonData = await createJsonData(level, contract);
+     const pinnedURI = await pinJSONToIPFS(process.env.REACT_APP_PINATA_KEY,
+       process.env.REACT_APP_PINATA_SECRET, jsonData, contract, level);
+   //}
+
+    setState("update");
+ }
+
+ const createJsonData = async (lvl, contract) => {
 
    const metadataTemplate =
    {
      "name": "Streamer Name",
-     "description": "A Twitch streamer",
+     "description": "NFTwitch allows Twitch streamers to mint dynamic NFTs as they grow their channels. Every X followers, the streamer is allowed to mint Y NFTs that they can then re-sell to their fans directly or on open marketplaces. Both parties have something to gain: the funds can be used as a source of income to help bootstrap a streamer, and fans can hold onto a rare and unique, one-of-a-kind collectible. Due to the dynamic nature of the NFT, the value may change over time and fans can re-sell to each other. Since the act of following a streamer on Twitch costs nothing to the viewer, it has never been easier for a streamer to start earning income from their fans.",
      "image": "",
      "attributes": [
        {
          "trait_type": "ID",
+         "value": 0
+       },
+       {
+         "trait_type": "Follows",
          "value": 0
        }
      ]
    }
 
    let metadata = metadataTemplate
-   const [tw, followCount, y] = await contract.getTokenData(tokenId)
+   const [twitchId, followCount] = await contract.getUriData(lvl)
 
    metadata['name'] = username
    metadata['image'] = profileURL
-   metadata['attributes'][0]['value'] = parseInt(tw)
+   metadata['attributes'][0]['value'] = parseInt(twitchId)
    metadata['attributes'][1]['value'] = parseInt(followCount)
    console.log(metadata)
 
    return metadata;
  }
 
- const pinJSONToIPFS = async (pinataApiKey, pinataSecretApiKey, jsonData, contract, token) => {
+ const pinJSONToIPFS = async (pinataApiKey, pinataSecretApiKey, jsonData, contract, lvl) => {
      const url = `https://api.pinata.cloud/pinning/pinJSONToIPFS`;
 
      axios.post(url, jsonData, {
@@ -405,40 +344,22 @@ const withdrawLink = async (provider, caddr, username) => {
          .then(async (response) => {
             const result = "https://gateway.pinata.cloud/ipfs/" + response.data.IpfsHash;
             console.log(result);
-            const pin = await contract.setTokenURI(token, result);
+
+            const pin = await contract.setURI(result);
+
+
          })
          .catch(function (error) {
-             console.log("ERROR")
              console.log(error)
          });
  };
 
  const pairAgain = async() => {
-   console.log(state);
+   //console.log(state);
    setPreviousState(state);
-   console.log(previousState);
+   //console.log(previousState);
    setState("pairagain");
  }
-
- const displayFollowerCount = async (contract) => {
-   console.log('Demo fulfilled!');
-   const followerCount = await contract.followerCount();
-   console.log(followerCount);
-   alert(followerCount);
- }
-
-const checkGas = async (provider, caddr) => {
-  const signer = provider.getSigner();
-  const contract = new Contract(caddr, abis.test, signer);
-
-  console.log("Checking gas...");
-  const gasValue = await contract.estimateGas.requestFollows(
-    "0xa333365f5cCd13a7ee33FaccDE25eb629cA89DdF",
-    "e518420de0ad4b06a2da4278f787d33b"
-  );
-
-  console.log(gasValue.toString());
-}
 
   if (!props.provider) {
     return (
@@ -457,9 +378,11 @@ const checkGas = async (provider, caddr) => {
     renderMintButton = <Button variant="outlined" onClick={() => setState("mint")}> Mint up to {allowed} NFTs</Button>
   }
 
-  if (parseInt(level) > 0)
+  let rewardCount = "NFTs";
+
+  if (level == 1)
   {
-    getOffchainTwitchInfo(props.provider, props.caddr);
+    rewardCount = "NFT";
   }
 
   if (state == "waiting")
@@ -478,12 +401,12 @@ const checkGas = async (provider, caddr) => {
     return (
       <div>
       <Container>
-      <img src={profileURL} position="fixed" width="50%" height="50%" />
+      <img src={profileURL} position="fixed" width="25%" height="25%" style={{display: profileURL != "x" ? 'block' : 'none'}} />
       </Container>
       <Container>
         <p>Welcome, {username} </p>
         <p>Followers: {followers} / {toNextLevel}</p>
-        <p>Next Reward: {level} NFTs</p>
+        <p>Next Reward: {level} {rewardCount}</p>
 
         <p>
          {renderMintButton}
@@ -492,14 +415,18 @@ const checkGas = async (provider, caddr) => {
         <Button variant="outlined" onClick={() => checkFollowCount(props.provider, props.caddr)}>
          Sync Follower Count With Twitch</Button>
 
+         <div>
+         <Button variant="outlined" onClick={() => setPicture(props.provider, props.caddr)}>
+          Sync Picture with Twitch</Button>
+         </div>
+
+
+          <Button variant="outlined" onClick={() => setURI(props.provider, props.caddr)}>
+           Update Metadata (Token URI)</Button>
+
          <p>
          <Button variant="outlined" onClick={() => pairAgain()}>
           Link to a different account</Button>
-         </p>
-
-         <p>
-         <Button variant="outlined" onClick={() => testPin(props.provider, props.caddr)}>
-          Test Pin</Button>
          </p>
 
         </Container>
@@ -593,6 +520,21 @@ const checkGas = async (provider, caddr) => {
     </div>
   );
   }
+  else if (state == "failed")
+  {
+    return (
+      <div>
+        <Container>
+          <p>Verification failed...</p>
+          <p>Be sure that your Twitch bio exactly matches the wallet you are using to access this site.</p>
+
+           <Button variant="outlined" onClick={() => setState("new")}>
+            Try again</Button>
+
+        </Container>
+      </div>
+    );
+  }
   else if (state == "new")
   {
     return(
@@ -611,10 +553,8 @@ const checkGas = async (provider, caddr) => {
 
         <Button variant="outlined" onClick={() => verifyStreamer(props.provider, props.caddr, name)}>
          Verify ownership of {name}</Button>
-       </Container>
 
-       <Button variant="outlined" onClick={() => withdrawLink(props.provider, props.caddr)}>
-        Withdraw LINK</Button>
+       </Container>
     </div>
   );
   }
@@ -635,7 +575,7 @@ function App() {
     }
   }, [loading, error, data]);
 
-  const contractAddress = "0xE2264c9C613143Aa090D4d74902A85F1688C4Ba1";
+  const contractAddress = process.env.REACT_APP_NFTWITCH_CONTRACT;
 
   return (
     <div>
@@ -647,7 +587,8 @@ function App() {
       <Body>
         <RenderPage provider={provider} caddr={contractAddress} />
         <Footer>
-        <Container style={{align: "left", color: "white" }}>Contract Address {contractAddress}</Container>
+        <Container style={{align: "left", color: "white" }}><a style={{align: "left", color: "white" }} href="https://github.com/AntonStrickland/nftwitch">GitHub</a> | Contract Address {contractAddress}
+        </Container>
         </Footer>
       </Body>
       </ThemeProvider>

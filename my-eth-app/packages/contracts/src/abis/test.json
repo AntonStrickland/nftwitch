@@ -149,6 +149,25 @@
 			{
 				"indexed": true,
 				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "url",
+				"type": "bytes32"
+			}
+		],
+		"name": "PictureFulfilled",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
 				"name": "level",
 				"type": "uint256"
 			},
@@ -545,26 +564,6 @@
 		"constant": true
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "tokenId",
-				"type": "uint256"
-			}
-		],
-		"name": "tokenURI",
-		"outputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function",
-		"constant": true
-	},
-	{
 		"inputs": [],
 		"name": "totalSupply",
 		"outputs": [
@@ -613,6 +612,11 @@
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
+	},
+	{
+		"stateMutability": "payable",
+		"type": "receive",
+		"payable": true
 	},
 	{
 		"inputs": [
@@ -733,6 +737,42 @@
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_oracle",
+				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "_jobId",
+				"type": "string"
+			}
+		],
+		"name": "requestPicture",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_requestId",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_url",
+				"type": "bytes32"
+			}
+		],
+		"name": "fulfillPicture",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "getStreamerData",
 		"outputs": [
@@ -760,6 +800,16 @@
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
 			}
 		],
 		"stateMutability": "view",
@@ -855,11 +905,36 @@
 		"inputs": [
 			{
 				"internalType": "uint256",
+				"name": "lvl",
+				"type": "uint256"
+			}
+		],
+		"name": "getUriData",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function",
+		"constant": true
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
 				"name": "tokenId",
 				"type": "uint256"
 			}
 		],
-		"name": "getTokenURI",
+		"name": "tokenURI",
 		"outputs": [
 			{
 				"internalType": "string",
@@ -874,24 +949,12 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "tokenId",
-				"type": "uint256"
-			},
-			{
 				"internalType": "string",
-				"name": "_tokenURI",
+				"name": "_uri",
 				"type": "string"
 			}
 		],
-		"name": "setTokenURI",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "withdrawLink",
+		"name": "setURI",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -899,27 +962,31 @@
 	{
 		"inputs": [
 			{
-				"internalType": "bytes32",
-				"name": "_requestId",
-				"type": "bytes32"
+				"internalType": "string",
+				"name": "_uri",
+				"type": "string"
 			},
 			{
 				"internalType": "uint256",
-				"name": "_payment",
-				"type": "uint256"
-			},
-			{
-				"internalType": "bytes4",
-				"name": "_callbackFunctionId",
-				"type": "bytes4"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_expiration",
+				"name": "lvl",
 				"type": "uint256"
 			}
 		],
-		"name": "cancelRequest",
+		"name": "setURIByLevel",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "withdrawBalance",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "withdrawLink",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

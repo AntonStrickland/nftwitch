@@ -31,6 +31,12 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     // Keep track of the allowed mints per level
     uint256 lastMintedLevel;
     uint256 nftsMintedThisLevel;
+
+    string username;
+    string pictureURL;
+    string uri;
+
+    string[100] urisByLevel;
   }
 
   uint256[100] internal levelsToFollowers;
@@ -72,6 +78,11 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     uint256 indexed nextId,
     uint256 numberMinted,
     uint256 allowed
+  );
+
+  event PictureFulfilled(
+    uint256 indexed id,
+    bytes32 indexed url
   );
 
   mapping(bytes32 => address) internal reqToAddress;
@@ -166,6 +177,7 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
 
     // Map the request ID to the address for use in the callback
     reqToAddress[requestId] = msg.sender;
+    reqToLogin[requestId] = _login;
   }
 
   // This function is called upon successful registration.
@@ -183,6 +195,7 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     // Update the mappings here
     ids[reqToAddress[_requestId]] = _id;
     wallets[_id] = reqToAddress[_requestId];
+    data[_id].username = reqToLogin[_requestId];
 
     // Initialize starting required follow count
     if (data[_id].requiredFollowCount < 10)
@@ -195,6 +208,7 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     {
       data[_id].level = 1;
       data[_id].lastMintedLevel = 1;
+      data[_id].uri = "";
     }
 
     emit RequestUserIDFulfilled(_requestId, _id);
@@ -252,16 +266,44 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
       data[senderID].requiredFollowCount, data[senderID].allowedMints);
   }
 
+  function requestPicture(address _oracle, string memory _jobId) external
+  {
+    require(ids[msg.sender] > 0, "Wallet not registered.");
+
+    Chainlink.Request memory req2 = buildChainlinkRequest(stringToBytes32(_jobId), address(this), this.fulfillPicture.selector);
+    req2.add("action", "pic");
+    req2.add("login", data[ids[msg.sender]].username);
+
+    // Send the request to the oracle
+    bytes32 requestId = sendChainlinkRequestTo(_oracle, req2, ORACLE_PAYMENT);
+
+    // Map the request ID to the address for use in the callback
+    reqToAddress[requestId] = msg.sender;
+  }
+
+  function fulfillPicture(bytes32 _requestId, bytes32 _url)
+    external recordChainlinkFulfillment(_requestId)
+  {
+    // Get the user ID associated with the calling address
+    uint256 senderID = ids[reqToAddress[_requestId]];
+
+    data[senderID].pictureURL = bytes32ToString(_url);
+
+    emit PictureFulfilled(senderID, _url);
+  }
+
   // Returns the current level associated with this address
   function getStreamerData() external view returns (uint256, uint256,
-    uint256, uint256, uint256)
+    uint256, uint256, uint256, string memory, string memory)
   {
     uint256 senderID = ids[msg.sender];
     return (data[senderID].level,
       data[senderID].followCount,
       data[senderID].prevFollowCount,
       data[senderID].requiredFollowCount,
-      data[senderID].allowedMints);
+      data[senderID].allowedMints,
+      data[senderID].username,
+      data[senderID].pictureURL);
   }
 
   // This function is called when the streamer is ready to mint their NFTs
@@ -334,25 +376,43 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     return(nfts[tokenId].twitchId, nfts[tokenId].followCount, 0);
   }
 
-  function getTokenURI(uint256 tokenId) public view returns (string memory) {
-      return tokenURI(tokenId);
+  function getUriData(uint256 lvl) external view returns (uint256, uint256)
+  {
+    require(ids[msg.sender] > 0, "Wallet not registered.");
+    uint256 senderID = ids[msg.sender];
+    return (senderID, levelsToFollowers[lvl]);
   }
 
-  function setTokenURI(uint256 tokenId, string memory _tokenURI) external {
-      require(nfts[tokenId].twitchId == ids[msg.sender], "Not yours");
-      _setTokenURI(tokenId, _tokenURI);
+  function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+    address tokenOwner = ERC721.ownerOf(tokenId);
+    uint256 senderID = ids[tokenOwner];
+    uint256 lvl = data[senderID].level;
+    //return data[senderID].urisByLevel[lvl];
+    return data[senderID].uri;
   }
+
+  function setURI(string memory _uri) external {
+    require(ids[msg.sender] > 0, "Wallet not registered.");
+    uint256 senderID = ids[msg.sender];
+    data[senderID].uri = _uri;
+  }
+
+  function setURIByLevel(string memory _uri, uint256 lvl) external {
+    require(ids[msg.sender] > 0, "Wallet not registered.");
+    uint256 senderID = ids[msg.sender];
+    data[senderID].urisByLevel[lvl] = _uri;
+  }
+
+  // Only the one who deployed the contract can withdraw
+  function withdrawBalance() external onlyOwner {
+    msg.sender.transfer(address(this).balance);
+  }
+
+  receive() external payable {}
 
   function withdrawLink() public onlyOwner {
     LinkTokenInterface link = LinkTokenInterface(chainlinkTokenAddress());
     require(link.transfer(msg.sender, link.balanceOf(address(this))), "Unable to transfer");
-  }
-
-  function cancelRequest(bytes32 _requestId, uint256 _payment,
-    bytes4 _callbackFunctionId, uint256 _expiration
-  ) public onlyOwner
-  {
-    cancelChainlinkRequest(_requestId, _payment, _callbackFunctionId, _expiration);
   }
 
   function stringToBytes32(string memory source) private pure returns (bytes32 result) {
@@ -364,6 +424,23 @@ contract NFTwitch4 is ERC721, ChainlinkClient, Ownable {
     assembly { // solhint-disable-line no-inline-assembly
       result := mload(add(source, 32))
     }
+  }
+
+  function bytes32ToString(bytes32 x) internal pure returns (string memory) {
+      bytes memory bytesString = new bytes(32);
+      uint charCount = 0;
+      for (uint j = 0; j < 32; j++) {
+          byte char = byte(bytes32(uint(x) * 2 ** (8 * j)));
+          if (char != 0) {
+              bytesString[charCount] = char;
+              charCount++;
+          }
+      }
+      bytes memory bytesStringTrimmed = new bytes(charCount);
+      for (uint256 j = 0; j < charCount; j++) {
+          bytesStringTrimmed[j] = bytesString[j];
+      }
+      return string(bytesStringTrimmed);
   }
 
 }

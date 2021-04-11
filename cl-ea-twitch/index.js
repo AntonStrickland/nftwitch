@@ -45,6 +45,7 @@ const createRequest = (input, callback) => {
 
     if (action == "verify" || action == "name" || action == "pic")
     {
+
       const url = "https://api.twitch.tv/helix/users"
 
       const login = validator.validated.data.login || "login"
@@ -72,6 +73,8 @@ const createRequest = (input, callback) => {
           fixed = fixed.replace(']', '');
           response.data = JSON.parse(fixed);
 
+          console.log(response.data);
+
           if (action == "verify")
           {
             response.data.result = response.data.data.description.toLowerCase();
@@ -82,8 +85,18 @@ const createRequest = (input, callback) => {
           }
           else if (action == "pic")
           {
-            response.data.result = response.data.data.profile_image_url;
+            var image = response.data.data.profile_image_url.toString();
+            image = image.replace('https://static-cdn.jtvnw.net/jtv_user_pictures/', '');
+            image = image.replace('-profile_image-300x300.jpg', '');
+            image = image.replace('-','');
+            image = image.replace('-','');
+            image = image.replace('-','');
+            image = image.replace('-','');
+            response.data.result = image;
           }
+
+          console.log(response.data.data.profile_image_url);
+          console.log(response.data.result);
 
           response.status = 200;
           callback(response.status, Requester.success(jobRunID, response));
