@@ -82,12 +82,12 @@ function RenderPage(props) {
 
     if (registered)
     {
-      console.log("Registered!");
+      //console.log("Registered!");
 
       await getData(provider, caddr);
     }
     else {
-      console.log("Not registered");
+      //console.log("Not registered");
       setState("new");
     }
 
@@ -163,10 +163,10 @@ const withdrawLink = async (provider, caddr, username) => {
    // TODO: Add a check that the contract has enough LINK for this call!
 
    const signer = provider.getSigner();
-   console.log(signer);
+   //console.log(signer);
    const contract = new Contract(caddr, abis.test, signer);
 
-   console.log(contract);
+   //console.log(contract);
    const demo = await contract.verifyStreamer(
      "0xa333365f5cCd13a7ee33FaccDE25eb629cA89DdF",
      "e518420de0ad4b06a2da4278f787d33b",
@@ -254,8 +254,8 @@ const withdrawLink = async (provider, caddr, username) => {
 
    contract.on('MintFulfilled', async (addr, nextId, success) => {
 
-     console.log("Next ID: " + nextId.toString());
-     console.log("Success: " + success.toString());
+     //console.log("Next ID: " + nextId.toString());
+     //console.log("Success: " + success.toString());
      setState("update");
    });
  }
@@ -274,8 +274,8 @@ const withdrawLink = async (provider, caddr, username) => {
    setWaitMessage("Syncing picture...");
 
    contract.on('PictureFulfilled', (requestId, url) => {
-     console.log(url);
-     console.log(url.toString());
+     //console.log(url);
+     //console.log(url.toString());
      setProfileURL(url.toString());
 
     setState("registered");
@@ -327,7 +327,7 @@ const withdrawLink = async (provider, caddr, username) => {
    metadata['image'] = profileURL
    metadata['attributes'][0]['value'] = parseInt(twitchId)
    metadata['attributes'][1]['value'] = parseInt(followCount)
-   console.log(metadata)
+   //console.log(metadata)
 
    return metadata;
  }
@@ -343,7 +343,7 @@ const withdrawLink = async (provider, caddr, username) => {
          })
          .then(async (response) => {
             const result = "https://gateway.pinata.cloud/ipfs/" + response.data.IpfsHash;
-            console.log(result);
+            //console.log(result);
 
             const pin = await contract.setURI(result);
 
