@@ -283,6 +283,42 @@ const withdrawLink = async (provider, caddr, username) => {
    });
  }
 
+ const pinFileToIPFS = async (pinataApiKey, pinataSecretApiKey) => {
+
+    const url = `https://api.pinata.cloud/pinning/pinFileToIPFS`;
+
+    const res = await axios.get(profileURL, {responseType: 'blob'});
+    console.log(res);
+    const file = res.data
+    console.log(file);
+
+    //we gather a local file for this example, but any valid readStream source will work here.
+    let data = new FormData();
+    data.append('file', file);
+
+    var result = "";
+
+    await axios.post(url, data, {
+            maxBodyLength: 'Infinity', //this is needed to prevent axios from erroring out with large files
+            headers: {
+                'Content-Type': `multipart/form-data; boundary=${data._boundary}`,
+                pinata_api_key: pinataApiKey,
+                pinata_secret_api_key: pinataSecretApiKey
+            }
+        })
+        .then(function (response) {
+            //handle response here
+            console.log("SUCCESS");
+            result = "https://gateway.pinata.cloud/ipfs/" + response.data.IpfsHash;
+            console.log(result);
+        })
+        .catch(function (error) {
+            //handle error here
+        });
+
+    return result;
+};
+
  const setURI = async(provider, caddr) => {
 
    const signer = provider.getSigner();
@@ -293,7 +329,9 @@ const withdrawLink = async (provider, caddr, username) => {
 
    //for(var lvl = 1; lvl < 100; lvl++)
    //{
-     const jsonData = await createJsonData(level, contract);
+     const pinnedImageURI = await pinFileToIPFS(process.env.REACT_APP_PINATA_KEY,
+    process.env.REACT_APP_PINATA_SECRET);
+     const jsonData = await createJsonData(level, contract, pinnedImageURI);
      const pinnedURI = await pinJSONToIPFS(process.env.REACT_APP_PINATA_KEY,
        process.env.REACT_APP_PINATA_SECRET, jsonData, contract, level);
    //}
@@ -301,7 +339,7 @@ const withdrawLink = async (provider, caddr, username) => {
     setState("update");
  }
 
- const createJsonData = async (lvl, contract) => {
+ const createJsonData = async (lvl, contract, imageURI) => {
 
    const metadataTemplate =
    {
@@ -324,7 +362,7 @@ const withdrawLink = async (provider, caddr, username) => {
    const [twitchId, followCount] = await contract.getUriData(lvl)
 
    metadata['name'] = username
-   metadata['image'] = profileURL
+   metadata['image'] = imageURI
    metadata['attributes'][0]['value'] = parseInt(twitchId)
    metadata['attributes'][1]['value'] = parseInt(followCount)
    //console.log(metadata)
@@ -587,7 +625,7 @@ function App() {
       <Body>
         <RenderPage provider={provider} caddr={contractAddress} />
         <Footer>
-        <Container style={{align: "left", color: "white" }}><a style={{align: "left", color: "white" }} href="https://github.com/AntonStrickland/nftwitch">GitHub</a> | Contract Address {contractAddress}
+        <Container style={{align: "left", color: "white" }}><a style={{align: "left", color: "white" }} href="https://github.com/AntonStrickland/nftwitch">GitHub</a> | <a href="https://discord.gg/Zx9gpyhMMr">Discord</a> | Contract Address {contractAddress}
         </Container>
         </Footer>
       </Body>
